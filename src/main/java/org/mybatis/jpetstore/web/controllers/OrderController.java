@@ -18,13 +18,13 @@ package org.mybatis.jpetstore.web.controllers;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import javax.servlet.http.HttpSession;
 
 import org.mybatis.jpetstore.domain.Cart;
 import org.mybatis.jpetstore.domain.Order;
 import org.mybatis.jpetstore.service.OrderService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -52,14 +52,52 @@ public class OrderController {
   private static final String LIST_ORDERS_VIEW = "order/ListOrders";
   /** The error view. */
   private static final String ERROR_VIEW = "common/Error";
+  /** Redirect used when an order page requires a signed-on user. */
+  private static final String REDIRECT_TO_SIGNON = "redirect:/account";
+
+  /** Message shown when an order page requires a signed-on user. */
+  private static final String SIGNON_REQUIRED_MESSAGE = "You must sign on before attempting to check out. Please sign on and try checking out again.";
+
+  /** Session key of the signed-on account (shared with AccountController and the JSPs). */
+  private static final String SESSION_ACCOUNT = "accountBean";
+  /** Session key of the shopping cart. */
+  private static final String SESSION_CART = "cart";
+  /** Session key of the order being checked out. */
+  private static final String SESSION_ORDER = "order";
 
   /** The card type list. */
   private static final List<String> CARD_TYPE_LIST = Collections
       .unmodifiableList(Arrays.asList("Visa", "MasterCard", "American Express"));
 
   /** The order service. */
-  @Autowired
-  private OrderService orderService;
+  private final OrderService orderService;
+
+  /**
+   * Instantiates a new order controller.
+   *
+   * @param orderService
+   *          the order service
+   */
+  public OrderController(OrderService orderService) {
+    this.orderService = orderService;
+  }
+
+  /**
+   * Finds the signed-on account in the session. Single place for the sign-on check used by every order page.
+   *
+   * @param session
+   *          the session
+   *
+   * @return the account session, or empty when nobody is signed on
+   */
+  private static Optional<AccountController.AccountSession> findSignedOnAccount(HttpSession session) {
+    AccountController.AccountSession accountSession = (AccountController.AccountSession) session
+        .getAttribute(SESSION_ACCOUNT);
+    if (accountSession == null || !accountSession.isAuthenticated()) {
+      return Optional.empty();
+    }
+    return Optional.of(accountSession);
+  }
 
   /**
    * List orders.
@@ -73,14 +111,12 @@ public class OrderController {
    */
   @GetMapping("/list")
   public String listOrders(HttpSession session, Model model) {
-    AccountController.AccountSession accountSession = (AccountController.AccountSession) session
-        .getAttribute("accountBean");
-    if (accountSession == null || !accountSession.isAuthenticated()) {
-      model.addAttribute("message",
-          "You must sign on before attempting to check out. Please sign on and try checking out again.");
+    Optional<AccountController.AccountSession> accountSession = findSignedOnAccount(session);
+    if (!accountSession.isPresent()) {
+      model.addAttribute("message", SIGNON_REQUIRED_MESSAGE);
       return ERROR_VIEW;
     }
-    List<Order> orderList = orderService.getOrdersByUsername(accountSession.getAccount().getUsername());
+    List<Order> orderList = orderService.getOrdersByUsername(accountSession.get().getAccount().getUsername());
     model.addAttribute("orderList", orderList);
     return LIST_ORDERS_VIEW;
   }
@@ -97,19 +133,17 @@ public class OrderController {
    */
   @GetMapping("/new")
   public String newOrderForm(HttpSession session, Model model) {
-    AccountController.AccountSession accountSession = (AccountController.AccountSession) session
-        .getAttribute("accountBean");
-    Cart cart = (Cart) session.getAttribute("cart");
+    Optional<AccountController.AccountSession> accountSession = findSignedOnAccount(session);
+    Cart cart = (Cart) session.getAttribute(SESSION_CART);
 
-    if (accountSession == null || !accountSession.isAuthenticated()) {
-      model.addAttribute("message",
-          "You must sign on before attempting to check out. Please sign on and try checking out again.");
-      return "redirect:/account";
+    if (!accountSession.isPresent()) {
+      model.addAttribute("message", SIGNON_REQUIRED_MESSAGE);
+      return REDIRECT_TO_SIGNON;
     }
     if (cart != null) {
       Order order = new Order();
-      order.initOrder(accountSession.getAccount(), cart);
-      session.setAttribute("order", order);
+      order.initOrder(accountSession.get().getAccount(), cart);
+      session.setAttribute(SESSION_ORDER, order);
       model.addAttribute("order", order);
       model.addAttribute("creditCardTypes", CARD_TYPE_LIST);
       return NEW_ORDER_VIEW;
@@ -139,14 +173,14 @@ public class OrderController {
       @RequestParam(value = "shippingAddressRequired", defaultValue = "false") boolean shippingAddressRequired,
       @RequestParam(value = "confirmed", defaultValue = "false") boolean confirmed, HttpSession session, Model model) {
 
-    Order sessionOrder = (Order) session.getAttribute("order");
+    Order sessionOrder = (Order) session.getAttribute(SESSION_ORDER);
 
     // When confirming, use the session order directly - the confirm form only
     // submits confirmed=true with no other fields, so @ModelAttribute Order is empty
     if (confirmed) {
       if (sessionOrder != null) {
         orderService.insertOrder(sessionOrder);
-        session.setAttribute("cart", new Cart());
+        session.setAttribute(SESSION_CART, new Cart());
         model.addAttribute("message", "Thank you, your order has been submitted.");
         model.addAttribute("order", sessionOrder);
         return VIEW_ORDER_VIEW;
@@ -196,11 +230,11 @@ public class OrderController {
     }
 
     if (shippingAddressRequired) {
-      session.setAttribute("order", order);
+      session.setAttribute(SESSION_ORDER, order);
       model.addAttribute("order", order);
       return SHIPPING_VIEW;
     } else {
-      session.setAttribute("order", order);
+      session.setAttribute(SESSION_ORDER, order);
       model.addAttribute("order", order);
       return CONFIRM_VIEW;
     }
@@ -220,13 +254,12 @@ public class OrderController {
    */
   @GetMapping("/view")
   public String viewOrder(@RequestParam("orderId") int orderId, HttpSession session, Model model) {
-    AccountController.AccountSession accountSession = (AccountController.AccountSession) session
-        .getAttribute("accountBean");
-    if (accountSession == null || !accountSession.isAuthenticated()) {
-      return "redirect:/account";
+    Optional<AccountController.AccountSession> accountSession = findSignedOnAccount(session);
+    if (!accountSession.isPresent()) {
+      return REDIRECT_TO_SIGNON;
     }
     Order order = orderService.getOrder(orderId);
-    if (accountSession.getAccount().getUsername().equals(order.getUsername())) {
+    if (accountSession.get().getAccount().getUsername().equals(order.getUsername())) {
       model.addAttribute("order", order);
       return VIEW_ORDER_VIEW;
     } else {
