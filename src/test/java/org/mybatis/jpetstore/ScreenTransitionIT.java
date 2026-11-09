@@ -127,6 +127,10 @@ class ScreenTransitionIT {
     $(By.linkText("Proceed to Checkout")).click();
     assertThat(title()).isEqualTo("JPetStore Demo");
 
+    // Fill in payment details (the form no longer comes with a fake card prefilled)
+    $(By.name("creditCard")).setValue("4111 1111 1111 1111");
+    $(By.name("expiryDate")).setValue("12/2030");
+
     // Changing shipping address
     $(By.name("shippingAddressRequired")).click();
     $(By.name("newOrder")).click();

@@ -76,9 +76,11 @@ class OrderTest {
     assertThat(order.getBillCountry()).isEqualTo(account.getCountry());
     assertThat(order.getBillZip()).isEqualTo(account.getZip());
     assertThat(order.getTotalPrice()).isEqualTo(new BigDecimal("4.10"));
-    assertThat(order.getCreditCard()).isEqualTo("999 9999 9999 9999");
-    assertThat(order.getCardType()).isEqualTo("Visa");
-    assertThat(order.getExpiryDate()).isEqualTo("12/03");
+    // D11: the order no longer starts with a fake card number and an expired date (999 9999 9999 9999, 12/03)
+    assertThat(order.getCreditCard()).isNull();
+    assertThat(order.getCardType()).isNull();
+    assertThat(order.getExpiryDate()).isNull();
+    assertThat(order.hasPaymentDetails()).isFalse();
     assertThat(order.getCourier()).isEqualTo("UPS");
     assertThat(order.getLocale()).isEqualTo("CA");
     assertThat(order.getStatus()).isEqualTo("P");
