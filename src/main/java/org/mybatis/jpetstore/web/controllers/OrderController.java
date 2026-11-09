@@ -175,69 +175,45 @@ public class OrderController {
 
     Order sessionOrder = (Order) session.getAttribute(SESSION_ORDER);
 
-    // When confirming, use the session order directly - the confirm form only
-    // submits confirmed=true with no other fields, so @ModelAttribute Order is empty
+    // The confirm form only posts confirmed=true, so the bound order is empty: use the session order.
     if (confirmed) {
-      if (sessionOrder != null) {
-        orderService.insertOrder(sessionOrder);
-        session.setAttribute(SESSION_CART, new Cart());
-        model.addAttribute("message", "Thank you, your order has been submitted.");
-        model.addAttribute("order", sessionOrder);
-        return VIEW_ORDER_VIEW;
-      } else {
-        model.addAttribute("message", "An error occurred processing your order (order was null).");
-        return ERROR_VIEW;
-      }
+      return confirmOrder(sessionOrder, session, model);
     }
 
+    // Each checkout step posts only part of the order; merge it into the order kept in the session.
+    Order currentOrder = order;
     if (sessionOrder != null) {
-      // Only overwrite fields that were actually submitted (non-null).
-      // ShippingForm only posts ship fields; NewOrderForm only posts billing/payment fields.
-      // Unconditional setters would null-out whichever set is absent from the current form.
-      if (order.getCardType() != null)
-        sessionOrder.setCardType(order.getCardType());
-      if (order.getCreditCard() != null)
-        sessionOrder.setCreditCard(order.getCreditCard());
-      if (order.getExpiryDate() != null)
-        sessionOrder.setExpiryDate(order.getExpiryDate());
-      if (order.getBillToFirstName() != null)
-        sessionOrder.setBillToFirstName(order.getBillToFirstName());
-      if (order.getBillToLastName() != null)
-        sessionOrder.setBillToLastName(order.getBillToLastName());
-      if (order.getBillAddress1() != null)
-        sessionOrder.setBillAddress1(order.getBillAddress1());
-      if (order.getBillAddress2() != null)
-        sessionOrder.setBillAddress2(order.getBillAddress2());
-      if (order.getBillCity() != null)
-        sessionOrder.setBillCity(order.getBillCity());
-      if (order.getBillState() != null)
-        sessionOrder.setBillState(order.getBillState());
-      if (order.getBillZip() != null)
-        sessionOrder.setBillZip(order.getBillZip());
-      if (order.getBillCountry() != null)
-        sessionOrder.setBillCountry(order.getBillCountry());
-      if (order.getShipToFirstName() != null) {
-        sessionOrder.setShipToFirstName(order.getShipToFirstName());
-        sessionOrder.setShipToLastName(order.getShipToLastName());
-        sessionOrder.setShipAddress1(order.getShipAddress1());
-        sessionOrder.setShipAddress2(order.getShipAddress2());
-        sessionOrder.setShipCity(order.getShipCity());
-        sessionOrder.setShipState(order.getShipState());
-        sessionOrder.setShipZip(order.getShipZip());
-        sessionOrder.setShipCountry(order.getShipCountry());
-      }
-      order = sessionOrder;
+      sessionOrder.updateFrom(order);
+      currentOrder = sessionOrder;
     }
 
-    if (shippingAddressRequired) {
-      session.setAttribute(SESSION_ORDER, order);
-      model.addAttribute("order", order);
-      return SHIPPING_VIEW;
-    } else {
-      session.setAttribute(SESSION_ORDER, order);
-      model.addAttribute("order", order);
-      return CONFIRM_VIEW;
+    session.setAttribute(SESSION_ORDER, currentOrder);
+    model.addAttribute("order", currentOrder);
+    return shippingAddressRequired ? SHIPPING_VIEW : CONFIRM_VIEW;
+  }
+
+  /**
+   * Saves the order kept in the session and empties the cart.
+   *
+   * @param sessionOrder
+   *          the order being checked out, or null when the session has none
+   * @param session
+   *          the session
+   * @param model
+   *          the model
+   *
+   * @return the string
+   */
+  private String confirmOrder(Order sessionOrder, HttpSession session, Model model) {
+    if (sessionOrder == null) {
+      model.addAttribute("message", "An error occurred processing your order (order was null).");
+      return ERROR_VIEW;
     }
+    orderService.insertOrder(sessionOrder);
+    session.setAttribute(SESSION_CART, new Cart());
+    model.addAttribute("message", "Thank you, your order has been submitted.");
+    model.addAttribute("order", sessionOrder);
+    return VIEW_ORDER_VIEW;
   }
 
   /**

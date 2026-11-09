@@ -23,6 +23,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * The Class Order.
@@ -667,6 +668,67 @@ public class Order implements Serializable {
    */
   public void addLineItem(LineItem lineItem) {
     lineItems.add(lineItem);
+  }
+
+  /**
+   * Updates this order with the fields submitted by one step of the checkout (payment form or shipping form).
+   * <p>
+   * Each checkout form posts only part of the order, so the fields it does not contain arrive as {@code null} and must
+   * not erase what is already in this order.
+   *
+   * @param submitted
+   *          the order bound from the submitted form
+   */
+  public void updateFrom(Order submitted) {
+    updatePaymentAndBillingFrom(submitted);
+    updateShippingFrom(submitted);
+  }
+
+  /**
+   * Copies the payment and billing fields that were submitted (non-null) by the payment form.
+   *
+   * @param submitted
+   *          the order bound from the submitted form
+   */
+  public void updatePaymentAndBillingFrom(Order submitted) {
+    copyIfPresent(submitted.getCardType(), this::setCardType);
+    copyIfPresent(submitted.getCreditCard(), this::setCreditCard);
+    copyIfPresent(submitted.getExpiryDate(), this::setExpiryDate);
+    copyIfPresent(submitted.getBillToFirstName(), this::setBillToFirstName);
+    copyIfPresent(submitted.getBillToLastName(), this::setBillToLastName);
+    copyIfPresent(submitted.getBillAddress1(), this::setBillAddress1);
+    copyIfPresent(submitted.getBillAddress2(), this::setBillAddress2);
+    copyIfPresent(submitted.getBillCity(), this::setBillCity);
+    copyIfPresent(submitted.getBillState(), this::setBillState);
+    copyIfPresent(submitted.getBillZip(), this::setBillZip);
+    copyIfPresent(submitted.getBillCountry(), this::setBillCountry);
+  }
+
+  /**
+   * Copies the shipping address when the shipping form was submitted. The shipping form is recognized by the first name
+   * of the receiver; when it is present, all eight shipping fields are replaced, as in the original controller.
+   *
+   * @param submitted
+   *          the order bound from the submitted form
+   */
+  public void updateShippingFrom(Order submitted) {
+    if (submitted.getShipToFirstName() == null) {
+      return;
+    }
+    setShipToFirstName(submitted.getShipToFirstName());
+    setShipToLastName(submitted.getShipToLastName());
+    setShipAddress1(submitted.getShipAddress1());
+    setShipAddress2(submitted.getShipAddress2());
+    setShipCity(submitted.getShipCity());
+    setShipState(submitted.getShipState());
+    setShipZip(submitted.getShipZip());
+    setShipCountry(submitted.getShipCountry());
+  }
+
+  private static <T> void copyIfPresent(T value, Consumer<T> setter) {
+    if (value != null) {
+      setter.accept(value);
+    }
   }
 
   /**
