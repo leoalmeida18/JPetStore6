@@ -96,11 +96,14 @@ public class OrderService {
    * @param orderId
    *          the order id
    *
-   * @return the order
+   * @return the order, or null when no order has this id
    */
   @Transactional
   public Order getOrder(int orderId) {
     Order order = orderMapper.getOrder(orderId);
+    if (order == null) {
+      return null;
+    }
     order.setLineItems(lineItemMapper.getLineItemsByOrderId(orderId));
 
     order.getLineItems().forEach(lineItem -> {

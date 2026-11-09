@@ -18,7 +18,6 @@ package org.mybatis.jpetstore.mapper;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Month;
 import java.util.List;
@@ -89,7 +88,7 @@ class OrderMapperTest {
     Map<String, Object> recordMap = jdbcTemplate.queryForMap("SELECT * FROM orders WHERE orderid = ?", 1);
     assertThat(recordMap).hasSize(25).containsEntry("ORDERID", order.getOrderId())
         .containsEntry("USERID", order.getUsername())
-        .containsEntry("ORDERDATE", java.sql.Date.valueOf(LocalDate.of(2018, Month.DECEMBER, 31)))
+        .containsEntry("ORDERDATE", java.sql.Timestamp.valueOf(LocalDateTime.of(2018, Month.DECEMBER, 31, 23, 59, 59)))
         .containsEntry("SHIPADDR1", order.getShipAddress1()).containsEntry("SHIPADDR2", order.getShipAddress2())
         .containsEntry("SHIPCITY", order.getShipCity()).containsEntry("SHIPSTATE", order.getShipState())
         .containsEntry("SHIPZIP", order.getShipZip()).containsEntry("SHIPCOUNTRY", order.getShipCountry())
@@ -124,7 +123,7 @@ class OrderMapperTest {
     Map<String, Object> recordMap = jdbcTemplate.queryForMap("SELECT * FROM orderstatus WHERE orderid = ?", 1);
     assertThat(recordMap).hasSize(4).containsEntry("ORDERID", order.getOrderId())
         .containsEntry("LINENUM", order.getOrderId())
-        .containsEntry("TIMESTAMP", java.sql.Date.valueOf(LocalDate.of(2018, Month.DECEMBER, 31)))
+        .containsEntry("TIMESTAMP", java.sql.Timestamp.valueOf(LocalDateTime.of(2018, Month.DECEMBER, 31, 23, 59, 59)))
         .containsEntry("STATUS", order.getStatus());
 
   }
@@ -171,7 +170,7 @@ class OrderMapperTest {
     // then
     assertThat(orders).hasSize(1);
     assertThat(orders.get(0).getOrderId()).isEqualTo(newOrder.getOrderId());
-    assertThat(orders.get(0).getOrderDate()).isEqualTo(LocalDateTime.of(2018, Month.DECEMBER, 31, 0, 0));
+    assertThat(orders.get(0).getOrderDate()).isEqualTo(LocalDateTime.of(2018, Month.DECEMBER, 31, 12, 59, 59));
     assertThat(orders.get(0).getCardType()).isEqualTo(newOrder.getCardType());
     assertThat(orders.get(0).getCreditCard()).isEqualTo(newOrder.getCreditCard());
     assertThat(orders.get(0).getExpiryDate()).isEqualTo(newOrder.getExpiryDate());
@@ -237,7 +236,7 @@ class OrderMapperTest {
 
     // then
     assertThat(order.getOrderId()).isEqualTo(newOrder.getOrderId());
-    assertThat(order.getOrderDate()).isEqualTo(LocalDateTime.of(2018, Month.DECEMBER, 31, 0, 0));
+    assertThat(order.getOrderDate()).isEqualTo(LocalDateTime.of(2018, Month.DECEMBER, 31, 12, 59, 59));
     assertThat(order.getCardType()).isEqualTo(newOrder.getCardType());
     assertThat(order.getCreditCard()).isEqualTo(newOrder.getCreditCard());
     assertThat(order.getExpiryDate()).isEqualTo(newOrder.getExpiryDate());

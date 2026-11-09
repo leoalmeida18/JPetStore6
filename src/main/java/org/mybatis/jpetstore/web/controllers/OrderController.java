@@ -235,6 +235,10 @@ public class OrderController {
       return REDIRECT_TO_SIGNON;
     }
     Order order = orderService.getOrder(orderId);
+    if (order == null) {
+      model.addAttribute("message", "Order not found.");
+      return ERROR_VIEW;
+    }
     if (accountSession.get().getAccount().getUsername().equals(order.getUsername())) {
       model.addAttribute("order", order);
       return VIEW_ORDER_VIEW;
