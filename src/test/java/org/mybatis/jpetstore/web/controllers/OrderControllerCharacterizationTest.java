@@ -16,7 +16,6 @@
 package org.mybatis.jpetstore.web.controllers;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -211,13 +210,17 @@ class OrderControllerCharacterizationTest {
   // ---------------------------------------------------------------------------------------------
 
   @Test
-  @DisplayName("Ver pedido inexistente derruba a pagina com NullPointerException (D10)")
-  void verPedidoInexistenteLancaNullPointerException() {
+  @DisplayName("Ver pedido inexistente mostra tela de erro (D10 corrigido)")
+  void verPedidoInexistenteMostraErro() {
     when(session.getAttribute("accountBean")).thenReturn(sessaoLogada("j2ee"));
     when(orderService.getOrder(999)).thenReturn(null);
 
-    // Comportamento atual, a ser corrigido no PR 5: em vez de uma tela de erro, a requisicao falha.
-    assertThrows(NullPointerException.class, () -> orderController.viewOrder(999, session, model));
+    // Antes (v0-legado): lancava NullPointerException e derrubava a pagina.
+    // Depois (PR 5): mostra a tela de erro com mensagem.
+    String view = orderController.viewOrder(999, session, model);
+
+    assertThat(view).isEqualTo("common/Error");
+    assertThat(model.asMap()).containsEntry("message", "Order not found.");
   }
 
   @Test

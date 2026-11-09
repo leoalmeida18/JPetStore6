@@ -18,6 +18,7 @@ package org.mybatis.jpetstore.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -108,6 +109,22 @@ class OrderServiceTest {
     assertThat(expectedOrder).isEqualTo(order);
     assertThat(expectedOrder.getLineItems()).hasSize(1);
     assertThat(expectedOrder.getLineItems().get(0).getItem().getQuantity()).isEqualTo(5);
+  }
+
+  /**
+   * Should return null and skip line items when the order does not exist (D10).
+   */
+  @Test
+  void shouldReturnNullWhenOrderDoesNotExist() {
+    // given
+    int orderId = 999;
+
+    // when
+    when(orderMapper.getOrder(orderId)).thenReturn(null);
+
+    // then
+    assertThat(orderService.getOrder(orderId)).isNull();
+    verify(lineItemMapper, never()).getLineItemsByOrderId(orderId);
   }
 
   /**
