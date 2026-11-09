@@ -33,6 +33,13 @@ public class Order implements Serializable {
   /** The serial version uid. */
   private static final long serialVersionUID = 6321792448424424931L;
 
+  /** Courier used for every new order. */
+  private static final String DEFAULT_COURIER = "UPS";
+  /** Locale stored with every new order. */
+  private static final String DEFAULT_LOCALE = "CA";
+  /** Status of an order that has just been placed (P = pending). */
+  private static final String STATUS_PENDING = "P";
+
   /** The order id. */
   private int orderId;
   /** The username. */
@@ -634,12 +641,10 @@ public class Order implements Serializable {
 
     totalPrice = cart.getSubTotal();
 
-    creditCard = "999 9999 9999 9999";
-    expiryDate = "12/03";
-    cardType = "Visa";
-    courier = "UPS";
-    locale = "CA";
-    status = "P";
+    // Payment details are typed by the customer in the payment form; no test data is prefilled.
+    courier = DEFAULT_COURIER;
+    locale = DEFAULT_LOCALE;
+    status = STATUS_PENDING;
 
     Iterator<CartItem> i = cart.getAllCartItems();
     while (i.hasNext()) {
@@ -723,6 +728,19 @@ public class Order implements Serializable {
     setShipState(submitted.getShipState());
     setShipZip(submitted.getShipZip());
     setShipCountry(submitted.getShipCountry());
+  }
+
+  /**
+   * Tells whether the payment details required to place the order (card number and expiry date) were filled in.
+   *
+   * @return true when both the card number and the expiry date are present
+   */
+  public boolean hasPaymentDetails() {
+    return isFilled(creditCard) && isFilled(expiryDate);
+  }
+
+  private static boolean isFilled(String value) {
+    return value != null && !value.trim().isEmpty();
   }
 
   private static <T> void copyIfPresent(T value, Consumer<T> setter) {

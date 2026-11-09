@@ -112,7 +112,7 @@ class OrderControllerCharacterizationTest {
   @Test
   @DisplayName("Confirmar grava o pedido da sessao e esvazia o carrinho")
   void confirmarGravaPedidoDaSessaoEEsvaziaCarrinho() {
-    Order pedidoDaSessao = new Order();
+    Order pedidoDaSessao = pedidoDoFormularioDePagamento();
     when(session.getAttribute("order")).thenReturn(pedidoDaSessao);
 
     String view = orderController.newOrder(new Order(), false, true, session, model);
@@ -187,7 +187,7 @@ class OrderControllerCharacterizationTest {
   @Test
   @DisplayName("Formulario de entrega sobrescreve todos os campos de entrega, ate com vazio")
   void formularioDeEntregaSobrescreveTodosOsCamposDeEntrega() {
-    Order pedidoDaSessao = new Order();
+    Order pedidoDaSessao = pedidoDoFormularioDePagamento();
     pedidoDaSessao.setShipCity("Palo Alto");
     pedidoDaSessao.setShipAddress2("MS UCUP02-206");
     when(session.getAttribute("order")).thenReturn(pedidoDaSessao);
@@ -203,6 +203,38 @@ class OrderControllerCharacterizationTest {
     // trocados, inclusive pelos que vieram vazios.
     assertThat(pedidoDaSessao.getShipCity()).isNull();
     assertThat(pedidoDaSessao.getShipAddress2()).isNull();
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Pagamento obrigatorio (D11 corrigido no PR 6)
+  // ---------------------------------------------------------------------------------------------
+
+  @Test
+  @DisplayName("Pagamento sem numero do cartao volta para o formulario com mensagem (D11)")
+  void pagamentoSemCartaoVoltaParaOFormulario() {
+    // Antes (v0-legado): o pedido ja vinha com o cartao falso 999 9999 9999 9999 e validade 12/03.
+    // Depois (PR 6): o cliente precisa informar o cartao; sem ele, o formulario volta com aviso.
+    Order pedidoDaSessao = new Order();
+    when(session.getAttribute("order")).thenReturn(pedidoDaSessao);
+    Order formulario = pedidoDoFormularioDePagamento();
+    formulario.setCreditCard("");
+
+    String view = orderController.newOrder(formulario, false, false, session, model);
+
+    assertThat(view).isEqualTo("order/NewOrderForm");
+    assertThat(model.asMap()).containsEntry("message", "Please enter the card number and expiry date.");
+    assertThat(model.asMap()).containsKey("creditCardTypes");
+  }
+
+  @Test
+  @DisplayName("Confirmar pedido sem cartao nao grava nada (D11)")
+  void confirmarSemCartaoNaoGrava() {
+    when(session.getAttribute("order")).thenReturn(new Order());
+
+    String view = orderController.newOrder(new Order(), false, true, session, model);
+
+    assertThat(view).isEqualTo("order/NewOrderForm");
+    verify(orderService, never()).insertOrder(any());
   }
 
   // ---------------------------------------------------------------------------------------------

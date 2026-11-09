@@ -58,6 +58,9 @@ public class OrderController {
   /** Message shown when an order page requires a signed-on user. */
   private static final String SIGNON_REQUIRED_MESSAGE = "You must sign on before attempting to check out. Please sign on and try checking out again.";
 
+  /** Message shown when the payment form is submitted without card number or expiry date. */
+  private static final String PAYMENT_DETAILS_REQUIRED_MESSAGE = "Please enter the card number and expiry date.";
+
   /** Session key of the signed-on account (shared with AccountController and the JSPs). */
   private static final String SESSION_ACCOUNT = "accountBean";
   /** Session key of the shopping cart. */
@@ -189,7 +192,24 @@ public class OrderController {
 
     session.setAttribute(SESSION_ORDER, currentOrder);
     model.addAttribute("order", currentOrder);
+    if (!currentOrder.hasPaymentDetails()) {
+      return askForPaymentDetails(model);
+    }
     return shippingAddressRequired ? SHIPPING_VIEW : CONFIRM_VIEW;
+  }
+
+  /**
+   * Sends the customer back to the payment form when the card number or the expiry date is missing.
+   *
+   * @param model
+   *          the model, already holding the order being checked out
+   *
+   * @return the string
+   */
+  private String askForPaymentDetails(Model model) {
+    model.addAttribute("message", PAYMENT_DETAILS_REQUIRED_MESSAGE);
+    model.addAttribute("creditCardTypes", CARD_TYPE_LIST);
+    return NEW_ORDER_VIEW;
   }
 
   /**
@@ -208,6 +228,10 @@ public class OrderController {
     if (sessionOrder == null) {
       model.addAttribute("message", "An error occurred processing your order (order was null).");
       return ERROR_VIEW;
+    }
+    if (!sessionOrder.hasPaymentDetails()) {
+      model.addAttribute("order", sessionOrder);
+      return askForPaymentDetails(model);
     }
     orderService.insertOrder(sessionOrder);
     session.setAttribute(SESSION_CART, new Cart());
