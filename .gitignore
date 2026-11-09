@@ -10,3 +10,6 @@
 *.properties
 .env
 .github/keys/
+# Analise local do SonarQube
+.sonar/
+sonar-*.json
