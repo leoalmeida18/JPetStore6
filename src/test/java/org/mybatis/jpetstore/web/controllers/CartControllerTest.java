@@ -16,6 +16,7 @@
 package org.mybatis.jpetstore.web.controllers;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -278,5 +279,92 @@ class CartControllerTest {
     assertThat(model.asMap().get("cart")).isInstanceOf(Cart.class);
     org.mockito.Mockito.verify(session).setAttribute(org.mockito.ArgumentMatchers.eq("cart"),
         org.mockito.ArgumentMatchers.any(Cart.class));
+  }
+
+  private Cart cartWithOneItem() {
+    Cart cart = new Cart();
+    Item item = new Item();
+    item.setItemId("EST-1");
+    item.setListPrice(new java.math.BigDecimal("10.00"));
+    cart.addItem(item, true);
+    return cart;
+  }
+
+  @Test
+  void addItemWithBlankIdReturnsError() {
+    HttpSession session = mock(HttpSession.class);
+    Model model = new ExtendedModelMap();
+
+    String view = cartController.addItemToCart("   ", session, model);
+
+    assertThat(view).isEqualTo("common/Error");
+    assertThat(model.asMap().get("message")).isEqualTo("Invalid item ID: cannot add item to cart.");
+  }
+
+  @Test
+  void removeItemWithBlankIdReturnsError() {
+    HttpSession session = mock(HttpSession.class);
+    Model model = new ExtendedModelMap();
+
+    String view = cartController.removeItemFromCart("   ", session, model);
+
+    assertThat(view).isEqualTo("common/Error");
+    assertThat(model.asMap().get("message")).isEqualTo("Invalid item ID: cannot remove item from cart.");
+  }
+
+  @Test
+  void updateCartQuantitiesIgnoresMissingParameter() {
+    HttpSession session = mock(HttpSession.class);
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    Model model = new ExtendedModelMap();
+    Cart cart = cartWithOneItem();
+    when(session.getAttribute("cart")).thenReturn(cart);
+
+    String view = cartController.updateCartQuantities(request, session, model);
+
+    assertThat(view).isEqualTo("cart/Cart");
+    assertThat(cart.getCartItemList().get(0).getQuantity()).isEqualTo(1);
+  }
+
+  @Test
+  void updateCartQuantitiesRemovesItemWhenQuantityIsNegative() {
+    HttpSession session = mock(HttpSession.class);
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    Model model = new ExtendedModelMap();
+    Cart cart = cartWithOneItem();
+    when(session.getAttribute("cart")).thenReturn(cart);
+    when(request.getParameter("EST-1")).thenReturn("-2");
+
+    cartController.updateCartQuantities(request, session, model);
+
+    assertThat(cart.getCartItemList()).isEmpty();
+  }
+
+  @Test
+  void itemRemovedByUpdateStaysInInternalMapAndReAddingItDoesNotShowIt() {
+    HttpSession session = mock(HttpSession.class);
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    Cart cart = cartWithOneItem();
+    when(session.getAttribute("cart")).thenReturn(cart);
+    when(request.getParameter("EST-1")).thenReturn("0");
+
+    cartController.updateCartQuantities(request, session, new ExtendedModelMap());
+
+    assertThat(cart.getCartItemList()).isEmpty();
+    assertThat(cart.containsItemId("EST-1")).isTrue();
+
+    cartController.addItemToCart("EST-1", session, new ExtendedModelMap());
+
+    assertThat(cart.getCartItemList()).isEmpty();
+  }
+
+  @Test
+  void addItemWithUnknownIdThrowsNullPointerException() {
+    HttpSession session = mock(HttpSession.class);
+    Model model = new ExtendedModelMap();
+    when(session.getAttribute("cart")).thenReturn(new Cart());
+
+    assertThatThrownBy(() -> cartController.addItemToCart("NOPE", session, model))
+        .isInstanceOf(NullPointerException.class);
   }
 }
