@@ -24,7 +24,6 @@ import org.mybatis.jpetstore.domain.Cart;
 import org.mybatis.jpetstore.domain.CartItem;
 import org.mybatis.jpetstore.domain.Item;
 import org.mybatis.jpetstore.service.CatalogService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -43,8 +42,17 @@ public class CartController {
   private static final String ERROR_VIEW = "common/Error";
 
   /** The catalog service. */
-  @Autowired
-  private CatalogService catalogService;
+  private final CatalogService catalogService;
+
+  /**
+   * Instantiates a new cart controller.
+   *
+   * @param catalogService
+   *          the catalog service
+   */
+  public CartController(CatalogService catalogService) {
+    this.catalogService = catalogService;
+  }
 
   /**
    * Get cart.
