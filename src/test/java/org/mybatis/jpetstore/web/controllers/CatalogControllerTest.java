@@ -16,6 +16,7 @@
 package org.mybatis.jpetstore.web.controllers;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -149,5 +150,43 @@ class CatalogControllerTest {
     assertThat(view).isEqualTo("catalog/Item");
     assertThat(model.asMap().get("item")).isSameAs(item);
     assertThat(model.asMap().get("product")).isSameAs(product);
+  }
+
+  /**
+   * View category with null id does not populate model.
+   */
+  @Test
+  void viewCategoryWithNullIdDoesNotPopulateModel() {
+    Model model = new ExtendedModelMap();
+
+    String view = catalogController.viewCategory(null, model);
+
+    assertThat(view).isEqualTo("catalog/Category");
+    assertThat(model.asMap()).doesNotContainKey("category");
+    assertThat(model.asMap()).doesNotContainKey("productList");
+  }
+
+  /**
+   * Search products with empty keyword returns error.
+   */
+  @Test
+  void searchProductsWithEmptyKeywordReturnsError() {
+    Model model = new ExtendedModelMap();
+
+    String view = catalogController.searchProducts("", model);
+
+    assertThat(view).isEqualTo("common/Error");
+    assertThat(model.asMap()).containsKey("message");
+  }
+
+  /**
+   * View item with non-existent id throws NullPointerException (legacy behavior before D10 fix).
+   */
+  @Test
+  void viewItemWithNonExistentIdThrowsNullPointerException() {
+    Model model = new ExtendedModelMap();
+    when(catalogService.getItem("INVALIDO")).thenReturn(null);
+
+    assertThatThrownBy(() -> catalogController.viewItem("INVALIDO", model)).isInstanceOf(NullPointerException.class);
   }
 }
