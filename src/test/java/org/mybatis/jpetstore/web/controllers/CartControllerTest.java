@@ -341,7 +341,7 @@ class CartControllerTest {
   }
 
   @Test
-  void itemRemovedByUpdateStaysInInternalMapAndReAddingItDoesNotShowIt() {
+  void itemRemovedByUpdateIsRemovedFromCartAndCanBeAddedAgain() {
     HttpSession session = mock(HttpSession.class);
     HttpServletRequest request = mock(HttpServletRequest.class);
     Cart cart = cartWithOneItem();
@@ -351,11 +351,39 @@ class CartControllerTest {
     cartController.updateCartQuantities(request, session, new ExtendedModelMap());
 
     assertThat(cart.getCartItemList()).isEmpty();
-    assertThat(cart.containsItemId("EST-1")).isTrue();
+    assertThat(cart.containsItemId("EST-1")).isFalse();
+
+    Item item = new Item();
+    item.setItemId("EST-1");
+    item.setListPrice(new java.math.BigDecimal("10.00"));
+    when(catalogService.isItemInStock("EST-1")).thenReturn(true);
+    when(catalogService.getItem("EST-1")).thenReturn(item);
 
     cartController.addItemToCart("EST-1", session, new ExtendedModelMap());
 
-    assertThat(cart.getCartItemList()).isEmpty();
+    assertThat(cart.getCartItemList()).hasSize(1);
+    assertThat(cart.getCartItemList().get(0).getQuantity()).isEqualTo(1);
+  }
+
+  @Test
+  void updateCartQuantitiesRemovesOnlyItemsWithQuantityLessThanOne() {
+    HttpSession session = mock(HttpSession.class);
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    Cart cart = cartWithOneItem();
+    Item second = new Item();
+    second.setItemId("EST-2");
+    second.setListPrice(new java.math.BigDecimal("5.00"));
+    cart.addItem(second, true);
+    when(session.getAttribute("cart")).thenReturn(cart);
+    when(request.getParameter("EST-1")).thenReturn("0");
+    when(request.getParameter("EST-2")).thenReturn("3");
+
+    cartController.updateCartQuantities(request, session, new ExtendedModelMap());
+
+    assertThat(cart.getCartItemList()).hasSize(1);
+    assertThat(cart.getCartItemList().get(0).getItem().getItemId()).isEqualTo("EST-2");
+    assertThat(cart.getCartItemList().get(0).getQuantity()).isEqualTo(3);
+    assertThat(cart.containsItemId("EST-1")).isFalse();
   }
 
   @Test

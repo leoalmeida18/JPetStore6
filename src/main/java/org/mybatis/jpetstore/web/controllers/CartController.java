@@ -15,7 +15,9 @@
  */
 package org.mybatis.jpetstore.web.controllers;
 
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
@@ -162,6 +164,7 @@ public class CartController {
   @PostMapping("/update")
   public String updateCartQuantities(HttpServletRequest request, HttpSession session, Model model) {
     Cart cart = getCart(session);
+    List<String> itemIdsToRemove = new ArrayList<>();
     Iterator<CartItem> cartItems = cart.getAllCartItems();
     while (cartItems.hasNext()) {
       CartItem cartItem = cartItems.next();
@@ -170,11 +173,14 @@ public class CartController {
         int quantity = Integer.parseInt(request.getParameter(itemId));
         cart.setQuantityByItemId(itemId, quantity);
         if (quantity < 1) {
-          cartItems.remove();
+          itemIdsToRemove.add(itemId);
         }
       } catch (NumberFormatException e) {
         // ignore invalid numeric input on purpose
       }
+    }
+    for (String itemId : itemIdsToRemove) {
+      cart.removeItemById(itemId);
     }
     model.addAttribute("cart", cart);
     return "cart/Cart";
