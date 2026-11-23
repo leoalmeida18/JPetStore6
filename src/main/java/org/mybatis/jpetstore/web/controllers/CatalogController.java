@@ -49,6 +49,8 @@ public class CatalogController {
 
   /** Message shown when search is submitted without a keyword. */
   private static final String KEYWORD_REQUIRED_MESSAGE = "Please enter a keyword to search for, then press the search button.";
+  /** Message shown when an item id does not exist. */
+  private static final String ITEM_NOT_FOUND_MESSAGE = "Item not found.";
 
   /** The catalog service. */
   private final CatalogService catalogService;
@@ -128,6 +130,10 @@ public class CatalogController {
   @GetMapping("/viewItem")
   public String viewItem(@RequestParam("itemId") String itemId, Model model) {
     Item item = catalogService.getItem(itemId);
+    if (item == null) {
+      model.addAttribute("message", ITEM_NOT_FOUND_MESSAGE);
+      return ERROR_VIEW;
+    }
     Product product = item.getProduct();
     model.addAttribute("item", item);
     model.addAttribute("product", product);

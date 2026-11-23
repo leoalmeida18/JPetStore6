@@ -16,7 +16,6 @@
 package org.mybatis.jpetstore.web.controllers;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -180,13 +179,16 @@ class CatalogControllerTest {
   }
 
   /**
-   * View item with non-existent id throws NullPointerException (legacy behavior before D10 fix).
+   * View item with non-existent id returns error view (D10 fix).
    */
   @Test
-  void viewItemWithNonExistentIdThrowsNullPointerException() {
+  void viewItemWithNonExistentIdReturnsErrorView() {
     Model model = new ExtendedModelMap();
     when(catalogService.getItem("INVALIDO")).thenReturn(null);
 
-    assertThatThrownBy(() -> catalogController.viewItem("INVALIDO", model)).isInstanceOf(NullPointerException.class);
+    String view = catalogController.viewItem("INVALIDO", model);
+
+    assertThat(view).isEqualTo("common/Error");
+    assertThat(model.asMap()).containsEntry("message", "Item not found.");
   }
 }
