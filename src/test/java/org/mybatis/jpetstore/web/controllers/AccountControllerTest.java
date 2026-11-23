@@ -16,9 +16,14 @@
 package org.mybatis.jpetstore.web.controllers;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -165,6 +170,10 @@ class AccountControllerTest {
     Account account = new Account();
     account.setUsername("j2ee");
     account.setFavouriteCategoryId("FISH");
+
+    AccountController.AccountSession accountSession = new AccountController.AccountSession(account, List.of(), true);
+    when(session.getAttribute("accountBean")).thenReturn(accountSession);
+
     when(accountService.getAccount("j2ee")).thenReturn(account);
     when(catalogService.getProductListByCategory("FISH")).thenReturn(List.of());
 
@@ -208,5 +217,90 @@ class AccountControllerTest {
     assertThat(model.asMap()).doesNotContainKey("account");
     assertThat(model.asMap()).containsKey("languages");
     assertThat(model.asMap()).containsKey("categories");
+  }
+
+  @Test
+  void editAccountDevePermitirUsuarioAutenticadoAlterarPropriaConta() {
+    HttpSession session = mock(HttpSession.class);
+
+    Account joao = new Account();
+    joao.setUsername("joao");
+    joao.setFavouriteCategoryId("DOGS");
+
+    AccountController.AccountSession accountSession = new AccountController.AccountSession(joao, List.of(), true);
+    when(session.getAttribute("accountBean")).thenReturn(accountSession);
+
+    Account dadosAtualizados = new Account();
+    dadosAtualizados.setUsername("joao");
+    dadosAtualizados.setFirstName("Joao Silva");
+    dadosAtualizados.setFavouriteCategoryId("DOGS");
+
+    when(accountService.getAccount("joao")).thenReturn(dadosAtualizados);
+    when(catalogService.getProductListByCategory("DOGS")).thenReturn(List.of());
+
+    String view = accountController.editAccount(dadosAtualizados, session);
+
+    verify(accountService).updateAccount(dadosAtualizados);
+    verify(session).setAttribute(eq("accountBean"),
+        argThat(attribute -> attribute instanceof AccountController.AccountSession
+            && ((AccountController.AccountSession) attribute).isAuthenticated()
+            && ((AccountController.AccountSession) attribute).getAccount() == dadosAtualizados));
+    assertThat(view).isEqualTo("redirect:/account/edit");
+  }
+
+  @Test
+  void editAccountNaoDevePermitirAlterarContaDeOutroUsuario() {
+    HttpSession session = mock(HttpSession.class);
+
+    Account joao = new Account();
+    joao.setUsername("joao");
+
+    AccountController.AccountSession accountSession = new AccountController.AccountSession(joao, List.of(), true);
+    when(session.getAttribute("accountBean")).thenReturn(accountSession);
+
+    Account maria = new Account();
+    maria.setUsername("maria");
+
+    String view = accountController.editAccount(maria, session);
+
+    verifyNoInteractions(accountService, catalogService);
+    verify(session, never()).setAttribute(eq("accountBean"), any());
+    assertThat(view).isEqualTo("redirect:/account/edit");
+  }
+
+  @Test
+  void editAccountNaoDevePermitirUsuarioNaoAutenticadoAlterarConta() {
+    HttpSession session = mock(HttpSession.class);
+
+    Account joao = new Account();
+    joao.setUsername("joao");
+
+    AccountController.AccountSession sessaoNaoAutenticada = new AccountController.AccountSession(joao, List.of(),
+        false);
+    when(session.getAttribute("accountBean")).thenReturn(sessaoNaoAutenticada);
+
+    Account contaAlvo = new Account();
+    contaAlvo.setUsername("joao");
+
+    String view = accountController.editAccount(contaAlvo, session);
+
+    verifyNoInteractions(accountService, catalogService);
+    verify(session, never()).setAttribute(eq("accountBean"), any());
+    assertThat(view).isEqualTo("redirect:/account");
+  }
+
+  @Test
+  void editAccountNaoDevePermitirAlteracaoSemSessaoAutenticada() {
+    HttpSession session = mock(HttpSession.class);
+    when(session.getAttribute("accountBean")).thenReturn(null);
+
+    Account contaAlvo = new Account();
+    contaAlvo.setUsername("joao");
+
+    String view = accountController.editAccount(contaAlvo, session);
+
+    verifyNoInteractions(accountService, catalogService);
+    verify(session, never()).setAttribute(eq("accountBean"), any());
+    assertThat(view).isEqualTo("redirect:/account");
   }
 }
