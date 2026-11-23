@@ -176,8 +176,23 @@ public class AccountController {
    */
   @PostMapping("/edit")
   public String editAccount(@ModelAttribute Account account, HttpSession session) {
+    Object sessionAttribute = session.getAttribute("accountBean");
+    if (!(sessionAttribute instanceof AccountSession)) {
+      return "redirect:/account";
+    }
+    AccountSession accountSession = (AccountSession) sessionAttribute;
+    if (!accountSession.isAuthenticated()) {
+      return "redirect:/account";
+    }
+
+    String username = accountSession.getAccount().getUsername();
+    if (!username.equals(account.getUsername())) {
+      return "redirect:/account/edit";
+    }
+
+    account.setUsername(username);
     accountService.updateAccount(account);
-    Account updatedAccount = accountService.getAccount(account.getUsername());
+    Account updatedAccount = accountService.getAccount(username);
     List<Product> myList = catalogService.getProductListByCategory(updatedAccount.getFavouriteCategoryId());
     session.setAttribute("accountBean", new AccountSession(updatedAccount, myList, true));
     return "redirect:/account/edit";
