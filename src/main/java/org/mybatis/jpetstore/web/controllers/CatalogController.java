@@ -21,7 +21,6 @@ import org.mybatis.jpetstore.domain.Category;
 import org.mybatis.jpetstore.domain.Item;
 import org.mybatis.jpetstore.domain.Product;
 import org.mybatis.jpetstore.service.CatalogService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -35,12 +34,34 @@ import org.springframework.web.bind.annotation.RequestParam;
 @RequestMapping("/catalog")
 public class CatalogController {
 
+  /** The main view. */
+  private static final String MAIN_VIEW = "catalog/Main";
+  /** The category view. */
+  private static final String CATEGORY_VIEW = "catalog/Category";
+  /** The product view. */
+  private static final String PRODUCT_VIEW = "catalog/Product";
+  /** The item view. */
+  private static final String ITEM_VIEW = "catalog/Item";
+  /** The search products view. */
+  private static final String SEARCH_PRODUCTS_VIEW = "catalog/SearchProducts";
   /** The error view. */
   private static final String ERROR_VIEW = "common/Error";
 
+  /** Message shown when search is submitted without a keyword. */
+  private static final String KEYWORD_REQUIRED_MESSAGE = "Please enter a keyword to search for, then press the search button.";
+
   /** The catalog service. */
-  @Autowired
-  private CatalogService catalogService;
+  private final CatalogService catalogService;
+
+  /**
+   * Instantiates a new catalog controller.
+   *
+   * @param catalogService
+   *          the catalog service
+   */
+  public CatalogController(CatalogService catalogService) {
+    this.catalogService = catalogService;
+  }
 
   /**
    * View main.
@@ -49,7 +70,7 @@ public class CatalogController {
    */
   @GetMapping({ "", "/" })
   public String viewMain() {
-    return "catalog/Main";
+    return MAIN_VIEW;
   }
 
   /**
@@ -70,7 +91,7 @@ public class CatalogController {
       model.addAttribute("productList", productList);
       model.addAttribute("category", category);
     }
-    return "catalog/Category";
+    return CATEGORY_VIEW;
   }
 
   /**
@@ -91,7 +112,7 @@ public class CatalogController {
       model.addAttribute("itemList", itemList);
       model.addAttribute("product", product);
     }
-    return "catalog/Product";
+    return PRODUCT_VIEW;
   }
 
   /**
@@ -110,7 +131,7 @@ public class CatalogController {
     Product product = item.getProduct();
     model.addAttribute("item", item);
     model.addAttribute("product", product);
-    return "catalog/Item";
+    return ITEM_VIEW;
   }
 
   /**
@@ -126,12 +147,12 @@ public class CatalogController {
   @GetMapping("/searchProducts")
   public String searchProducts(@RequestParam(value = "keyword", required = false) String keyword, Model model) {
     if (keyword == null || keyword.isEmpty()) {
-      model.addAttribute("message", "Please enter a keyword to search for, then press the search button.");
+      model.addAttribute("message", KEYWORD_REQUIRED_MESSAGE);
       return ERROR_VIEW;
     }
     List<Product> productList = catalogService.searchProductList(keyword.toLowerCase());
     model.addAttribute("productList", productList);
-    return "catalog/SearchProducts";
+    return SEARCH_PRODUCTS_VIEW;
   }
 
 }
